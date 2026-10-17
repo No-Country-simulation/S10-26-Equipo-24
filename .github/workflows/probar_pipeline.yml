@@ -1,0 +1,48 @@
+name: Probar pipeline de ingesta
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Verificar sintaxis
+        run: python -m py_compile pipeline.py
+
+      - name: Comprobar catálogo
+        run: |
+          python - <<'PY'
+          import csv
+
+          with open(
+              "data/catalogo_base.csv",
+              encoding="utf-8-sig",
+              newline=""
+          ) as archivo:
+              filas = list(csv.DictReader(archivo))
+
+          assert len(filas) == 100, "El catálogo debe tener 100 filas"
+
+          ids = [fila["repo_id"] for fila in filas]
+          assert len(ids) == len(set(ids)), "Hay IDs duplicados"
+
+          print("Catálogo válido: 100 repositorios únicos")
+          PY
