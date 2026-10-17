@@ -63,6 +63,13 @@ def github_get(session, url, params=None, etag=None):
         if response.status_code in (200, 304):
             return response
         if response.status_code in (403, 429):
+            print(
+                f"GitHub API HTTP {response.status_code} | "
+                f"Mensaje: {response.text[:500]} | "
+                f"Remaining: {response.headers.get('X-RateLimit-Remaining')} | "
+                f"Retry-After: {response.headers.get('Retry-After')} | "
+                f"Reset: {response.headers.get('X-RateLimit-Reset')}"
+            )
             remaining = response.headers.get('X-RateLimit-Remaining')
             retry_after = response.headers.get('Retry-After')
             if retry_after:
