@@ -123,6 +123,8 @@ def update_repo(conn, session, repo, weekly=False):
         conn.commit()
         print(f'{full}: metadatos actualizados')
     if weekly:
+        # Espaciar las consultas adicionales de commits
+        time.sleep(2)
         since = (dt.datetime.now(UTC) - dt.timedelta(days=90)).isoformat()
         commits_resp = github_get(session, f'{API}/repos/{full}/commits',
                                   params={'since': since, 'per_page': 100, 'page': 1})
