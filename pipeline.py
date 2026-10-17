@@ -58,10 +58,32 @@ def load_catalog():
 
 def github_get(session, url, params=None, etag=None):
     headers = {'If-None-Match': etag} if etag else {}
+
     for attempt in range(3):
-        response = session.get(url, params=params, headers=headers, timeout=30)
+        response = session.get(
+            url, params=params, headers=headers, timeout=30
+        )
+
         if response.status_code in (200, 304):
             return response
+
+        # Detectar restricciones de acceso por dirección IP
+        if response.status_code == 403:
+            try:
+                message = response.json().get("message", "").lower()
+            except (ValueError, AttributeError):
+                message = ""
+
+            if "ip" in message and (
+                "allow list" in message
+                or "lista de permisos de ip" in message
+                or "lista de direcciones ip" in message
+            ):
+                raise PermissionError(
+                    f"Acceso bloqueado por restricción de IP: {url}"
+                )
+
+        # Manejar límites de solicitudes de GitHub
         if response.status_code in (403, 429):
             print(
                 f"GitHub API HTTP {response.status_code} | "
@@ -70,19 +92,31 @@ def github_get(session, url, params=None, etag=None):
                 f"Retry-After: {response.headers.get('Retry-After')} | "
                 f"Reset: {response.headers.get('X-RateLimit-Reset')}"
             )
+
             remaining = response.headers.get('X-RateLimit-Remaining')
             retry_after = response.headers.get('Retry-After')
+
             if retry_after:
                 wait = max(1, float(retry_after))
             elif remaining == '0':
-                wait = max(1, int(response.headers.get('X-RateLimit-Reset', '0')) - time.time() + 5)
+                wait = max(
+                    1,
+                    int(response.headers.get('X-RateLimit-Reset', '0'))
+                    - time.time() + 5
+                )
             else:
                 wait = min(60 * (2 ** attempt), 240)
+
             if attempt < 2:
-                print(f'Limitación API HTTP {response.status_code}; espera {wait:.0f}s')
+                print(
+                    f'Limitación API HTTP {response.status_code}; '
+                    f'espera {wait:.0f}s'
+                )
                 time.sleep(wait)
                 continue
+
         response.raise_for_status()
+
     raise RuntimeError('Se agotaron los reintentos de GitHub')
 
 def log_error(conn, rid, phase, exc):
@@ -95,53 +129,148 @@ def log_error(conn, rid, phase, exc):
 def update_repo(conn, session, repo, weekly=False):
     rid = int(repo['repo_id'])
     full = repo['nombre_completo']
-    state = conn.execute('SELECT etag FROM state WHERE repo_id=?', (rid,)).fetchone()
+
+    state = conn.execute(
+        'SELECT etag FROM state WHERE repo_id=?', (rid,)
+    ).fetchone()
+
     etag = state[0] if state else None
     resp = github_get(session, f'{API}/repos/{full}', etag=etag)
     checked = now()
+
     if resp.status_code == 304:
-        conn.execute('INSERT INTO state(repo_id,etag,last_checked) VALUES(?,?,?) '
-                     'ON CONFLICT(repo_id) DO UPDATE SET last_checked=excluded.last_checked', (rid, etag, checked))
+        conn.execute(
+            'INSERT INTO state(repo_id,etag,last_checked) VALUES(?,?,?) '
+            'ON CONFLICT(repo_id) DO UPDATE SET last_checked=excluded.last_checked',
+            (rid, etag, checked)
+        )
+
         # Snapshot solo para cambios, evita duplicaciones artificiales
         conn.commit()
         print(f'{full}: sin cambios (304)')
+
     else:
         data = resp.json()
+
         if int(data.get('id', -1)) != rid:
-            raise ValueError(f'ID no coincide para {full}: {data.get("id")} vs {rid}')
+            raise ValueError(
+                f'ID no coincide para {full}: {data.get("id")} vs {rid}'
+            )
+
         lic = (data.get('license') or {}).get('spdx_id')
-        conn.execute('''INSERT INTO snapshots
-          (repo_id,measured_at,stars,forks,open_issues_and_pr,pushed_at,license,archived,source)
-          VALUES (?,?,?,?,?,?,?,?,?)''',
-          (rid, checked, data.get('stargazers_count'), data.get('forks_count'),
-           data.get('open_issues_count'), data.get('pushed_at'), lic,
-           int(bool(data.get('archived'))), 'github_api'))
-        conn.execute('''INSERT INTO state(repo_id,etag,last_checked,last_changed)
-           VALUES(?,?,?,?) ON CONFLICT(repo_id) DO UPDATE SET
-           etag=excluded.etag,last_checked=excluded.last_checked,last_changed=excluded.last_changed''',
-           (rid, resp.headers.get('ETag'), checked, checked))
+
+        conn.execute(
+            '''INSERT INTO snapshots
+               (repo_id,measured_at,stars,forks,open_issues_and_pr,
+                pushed_at,license,archived,source)
+               VALUES (?,?,?,?,?,?,?,?,?)''',
+            (
+                rid,
+                checked,
+                data.get('stargazers_count'),
+                data.get('forks_count'),
+                data.get('open_issues_count'),
+                data.get('pushed_at'),
+                lic,
+                int(bool(data.get('archived'))),
+                'github_api'
+            )
+        )
+
+        conn.execute(
+            '''INSERT INTO state(repo_id,etag,last_checked,last_changed)
+               VALUES(?,?,?,?)
+               ON CONFLICT(repo_id) DO UPDATE SET
+               etag=excluded.etag,
+               last_checked=excluded.last_checked,
+               last_changed=excluded.last_changed''',
+            (rid, resp.headers.get('ETag'), checked, checked)
+        )
+
         conn.commit()
         print(f'{full}: metadatos actualizados')
+
     if weekly:
         # Espaciar las consultas adicionales de commits
         time.sleep(2)
-        since = (dt.datetime.now(UTC) - dt.timedelta(days=90)).isoformat()
-        commits_resp = github_get(session, f'{API}/repos/{full}/commits',
-                                  params={'since': since, 'per_page': 100, 'page': 1})
+
+        since = (
+            dt.datetime.now(UTC) - dt.timedelta(days=90)
+        ).isoformat()
+
+        try:
+            commits_resp = github_get(
+                session,
+                f'{API}/repos/{full}/commits',
+                params={
+                    'since': since,
+                    'per_page': 100,
+                    'page': 1
+                }
+            )
+
+        except PermissionError as e:
+            conn.execute(
+                '''INSERT INTO errors
+                   (repo_id, at, phase, http_status, message)
+                   VALUES (?, ?, ?, ?, ?)''',
+                (
+                    rid,
+                    now(),
+                    'weekly_commits_access',
+                    403,
+                    str(e)
+                )
+            )
+
+            conn.commit()
+            print(
+                f'{full}: commits no disponibles '
+                f'por restricción de IP'
+            )
+            return
+
         commits = commits_resp.json()
+
         if not isinstance(commits, list):
-            raise ValueError('La API no devolvió una lista de commits')
+            raise ValueError(
+                'La API no devolvió una lista de commits'
+            )
+
         # 100 registros implican un mínimo; exactitud desconocida
         observed = len(commits)
         complete = int(observed < 100)
-        # La consulta de commits se registra en un snapshot propio incluso si hubo 304 metadata
-        conn.execute('''INSERT INTO snapshots
-          (repo_id, measured_at, commits_observed, commits_complete, commits_since, source)
-          VALUES (?,?,?,?,?,?)''', (rid, now(), observed, complete, since, 'github_commits'))
-        conn.execute('INSERT INTO state(repo_id,last_commit_checked) VALUES(?,?) '
-                     'ON CONFLICT(repo_id) DO UPDATE SET last_commit_checked=excluded.last_commit_checked', (rid, now()))
+
+        # La consulta de commits se registra en un snapshot propio
+        # incluso si hubo 304 en los metadatos
+        conn.execute(
+            '''INSERT INTO snapshots
+               (repo_id, measured_at, commits_observed,
+                commits_complete, commits_since, source)
+               VALUES (?,?,?,?,?,?)''',
+            (
+                rid,
+                now(),
+                observed,
+                complete,
+                since,
+                'github_commits'
+            )
+        )
+
+        conn.execute(
+            'INSERT INTO state(repo_id,last_commit_checked) VALUES(?,?) '
+            'ON CONFLICT(repo_id) DO UPDATE SET '
+            'last_commit_checked=excluded.last_commit_checked',
+            (rid, now())
+        )
+
         conn.commit()
-        print(f'  commits 90d: {observed}{"+" if not complete else ""}')
+
+        print(
+            f'  commits 90d: {observed}'
+            f'{"+" if not complete else ""}'
+        )
 
 def export_files(conn, rows):
     # latest metadata and latest commits are separate snapshots; merge by repo_id
