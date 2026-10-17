@@ -1,0 +1,63 @@
+name: Actualizar catálogo Open Source
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "daily o weekly"
+        required: false
+        default: "daily"
+        type: choice
+        options: [daily, weekly]
+  schedule:
+    - cron: '17 8 * * *'
+      timezone: 'America/Cancun'
+    - cron: '43 8 * * 0'
+      timezone: 'America/Cancun'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nocountry-catalogo
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+      - name: Actualizar desde API
+        id: ingesta
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_MODE: ${{ inputs.mode }}
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE_CRON: ${{ github.event.schedule }}
+        run: |
+          MODE="${INPUT_MODE:-daily}"
+          if [ "$EVENT_NAME" = 'schedule' ] && [ "$SCHEDULE_CRON" = '43 8 * * 0' ]; then MODE=weekly; fi
+          python pipeline.py --mode "$MODE"
+      - name: Guardar SQLite y CSV en el repositorio
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/historico.sqlite data/catalogo_actualizado.csv data/errores.csv
+          if ! git diff --cached --quiet; then
+            git commit -m 'Actualizar métricas catálogo [skip ci]'
+            git push origin HEAD:${{ github.event.repository.default_branch }}
+          fi
+      - name: Informar errores de ingesta
+        if: steps.ingesta.outcome == 'failure'
+        run: |
+          echo 'Hubo errores de ingesta. Revisar data/errores.csv y los logs.'
+          exit 1
