@@ -1,9 +1,6 @@
 name: Actualizar catálogo Open Source
 
 on:
-  pull_request:
-    branches:
-      - develop
   workflow_dispatch:
     inputs:
       mode:
