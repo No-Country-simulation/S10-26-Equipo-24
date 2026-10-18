@@ -279,29 +279,19 @@ def main():
     if not rows:
         raise ValueError("El catálogo de entrada está vacío.")
 
-    # Seleccionar un repositorio por cada categoría
-    muestra = []
-    categorias_vistas = set()
+    # Procesar los 100 repositorios del catálogo
+    muestra = rows[:LIMITE]
 
-    for repo in rows:
-        categoria_busqueda = repo["categoria_busqueda"].strip()
-
-        if categoria_busqueda not in categorias_vistas:
-            muestra.append(repo)
-            categorias_vistas.add(categoria_busqueda)
-
-        if len(muestra) == LIMITE:
-            break
+    print(f"Repositorios seleccionados: {len(muestra)}")
 
     if not muestra:
         raise ValueError("No se encontraron repositorios.")
-
-    print(f"Categorías seleccionadas: {len(categorias_vistas)}")
 
     propuestas = []
 
     for numero, repo in enumerate(muestra, start=1):
         nombre = repo["nombre_completo"].strip()
+
         print(f"[{numero}/{len(muestra)}] {nombre}")
 
         datos, error_api = obtener_json(
