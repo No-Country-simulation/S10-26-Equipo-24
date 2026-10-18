@@ -31,7 +31,7 @@ jobs:
       - name: Verificar sintaxis
         run: python -m py_compile clasificar_repositorios.py
 
-      - name: Clasificar 10 repositorios
+      - name: Clasificar 100 repositorios
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python clasificar_repositorios.py
@@ -48,7 +48,9 @@ jobs:
           ) as f:
               rows = list(csv.DictReader(f))
 
-          assert len(rows) == 10, "Se esperaban 10 propuestas"
+          assert len(rows) == 100, "Se esperaban 100 propuestas"
+          ids = [r["repo_id"] for r in rows]
+          assert len(set(ids)) == 100, "Hay repositorios duplicados"
 
           validas = sum(
               bool(r["categoria_propuesta"].strip())
