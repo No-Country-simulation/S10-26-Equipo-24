@@ -175,6 +175,7 @@ def proponer_categoria(descripcion, topics, readme):
     return principal, "; ".join(secundarias), confianza, evidencia
 
 
+
 def proponer_tipo(descripcion, topics, readme):
     descripcion = (descripcion or "").lower()
     topics_texto = " ".join(topics).lower()
@@ -185,6 +186,18 @@ def proponer_tipo(descripcion, topics, readme):
 
     reglas = [
         (
+            "Plataforma de pagos",
+            ["payment orchestration", "payment-orchestration",
+             "payment platform", "payment-platform",
+             "payment switch"]
+        ),
+        (
+            "Herramienta de seguridad",
+            ["vulnerability scanner", "vulnerability scanning",
+             "security scanner", "container security",
+             "security scanning", "trivy"]
+        ),
+        (
             "Motor de búsqueda",
             ["search engine", "search-engine", "metasearch"]
         ),
@@ -192,11 +205,6 @@ def proponer_tipo(descripcion, topics, readme):
             "Servidor / broker de mensajería",
             ["message broker", "messaging server",
              "nats-server", "message queue server"]
-        ),
-        (
-            "Herramienta de seguridad",
-            ["vulnerability scanner", "security scanner",
-             "container security", "vulnerability scanning"]
         ),
         (
             "Plantilla / ejemplo",
@@ -234,6 +242,7 @@ def proponer_tipo(descripcion, topics, readme):
             return tipo
 
     return "Por determinar"
+
 
 def generar_justificacion(categoria, tipo, evidencia, descripcion):
     if not categoria:
@@ -318,6 +327,11 @@ def main():
             )
 
             observaciones = error_readme
+             fuente_evidencia = (
+                "Metadatos solamente"
+                if error_readme
+                else "Metadatos y README"
+            )
 
         else:
             categoria = ""
@@ -327,6 +341,7 @@ def main():
             evidencia = ""
             justificacion = "No se pudo consultar la información."
             observaciones = error_api
+            fuente_evidencia = "Sin información disponible"
 
         propuestas.append({
             "repo_id": repo["repo_id"],
@@ -340,7 +355,8 @@ def main():
             "confianza_heuristica": confianza,
             "estado_validacion": "Pendiente",
             "requiere_revision_humana": "Sí",
-            "observaciones_extraccion": observaciones
+            "observaciones_extraccion": observaciones,
+            "fuente_evidencia": fuente_evidencia
         })
 
         time.sleep(1)
