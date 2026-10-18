@@ -9,7 +9,7 @@ from pathlib import Path
 # CONFIGURACIÓN
 INPUT = Path("data/catalogo_base.csv")
 OUTPUT = Path("data/propuestas_validacion.csv")
-LIMITE = 10  # Primera prueba: solo 10 repositorios
+LIMITE = 100  # Primera prueba: solo 10 repositorios
 
 API = "https://api.github.com"
 
