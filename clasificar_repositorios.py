@@ -104,35 +104,52 @@ def contiene_termino(texto, termino):
 
 
 def proponer_categoria(descripcion, topics, readme):
-    texto_principal = (descripcion or "").lower()
-    temas = " ".join(topics).lower()
-    contenido = (readme or "").lower()
+    descripcion = (descripcion or "").lower()
+    topics_texto = " ".join(topics).lower()
+    readme = (readme or "").lower()
 
     resultados = []
 
     for categoria, palabras in CATEGORIAS.items():
-        coincidencias = []
+        evidencia = []
+        puntaje = 0
 
         for palabra in palabras:
-            # Los topics y la descripción tienen mayor peso.
-            if contiene_termino(temas, palabra):
-                coincidencias.append((palabra, 3))
-            elif contiene_termino(texto_principal, palabra):
-                coincidencias.append((palabra, 2))
-            elif contiene_termino(contenido, palabra):
-                coincidencias.append((palabra, 1))
+            if contiene_termino(topics_texto, palabra):
+                puntaje += 5
+                evidencia.append(palabra)
 
-        puntaje = sum(peso for _, peso in coincidencias)
+            elif contiene_termino(descripcion, palabra):
+                puntaje += 4
+                evidencia.append(palabra)
 
-        if puntaje:
-            resultados.append(
-                (puntaje, categoria, [palabra for palabra, _ in coincidencias])
-            )
+            elif contiene_termino(readme[:2000], palabra):
+                puntaje += 1
+                evidencia.append(palabra)
+
+        # Evitar confundir tecnologías utilizadas con función principal
+        if categoria == "Bases de datos":
+            señales_principales = [
+                "database engine",
+                "database management system",
+                "database server",
+                "vector database",
+                "distributed database"
+            ]
+
+            if not any(
+                contiene_termino(descripcion + " " + topics_texto, señal)
+                for señal in señales_principales
+            ):
+                puntaje = min(puntaje, 2)
+
+        if puntaje > 0:
+            resultados.append((puntaje, categoria, evidencia))
 
     if not resultados:
         return "", "Sin evidencia suficiente", ""
 
-    resultados.sort(reverse=True)
+    resultados.sort(key=lambda x: x[0], reverse=True)
 
     mejor = resultados[0]
     segundo = resultados[1][0] if len(resultados) > 1 else 0
@@ -147,21 +164,18 @@ def proponer_categoria(descripcion, topics, readme):
 
 
 def proponer_tipo(descripcion, topics, readme):
-    texto = " ".join([
-        descripcion or "",
-        " ".join(topics),
-        (readme or "")[:6000]
-    ]).lower()
+    descripcion = (descripcion or "").lower()
+    topics_texto = " ".join(topics).lower()
+    readme = (readme or "").lower()
+
+    principal = descripcion + " " + topics_texto
+    secundario = readme[:2000]
 
     reglas = [
         (
             "Plantilla / ejemplo",
             ["boilerplate", "starter", "template",
              "scaffold", "scaffolding", "example project"]
-        ),
-        (
-            "Generador de código",
-            ["code generator", "code-generator", "codegen"]
         ),
         (
             "Framework",
@@ -173,7 +187,11 @@ def proponer_tipo(descripcion, topics, readme):
         ),
         (
             "Plataforma / servidor",
-            ["platform", "server", "self-hosted"]
+            ["platform", "self-hosted", "database server"]
+        ),
+        (
+            "Generador de código",
+            ["code generator", "code-generator", "codegen"]
         ),
         (
             "Herramienta",
@@ -181,8 +199,14 @@ def proponer_tipo(descripcion, topics, readme):
         )
     ]
 
+    # Priorizar descripción y topics
     for tipo, palabras in reglas:
-        if any(contiene_termino(texto, palabra) for palabra in palabras):
+        if any(contiene_termino(principal, p) for p in palabras):
+            return tipo
+
+    # Utilizar README como evidencia secundaria
+    for tipo, palabras in reglas:
+        if any(contiene_termino(secundario, p) for p in palabras):
             return tipo
 
     return "Por determinar"
