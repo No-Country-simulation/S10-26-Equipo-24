@@ -259,4 +259,3 @@ def generar_justificacion(categoria, tipo, evidencia, descripcion):
     )
 
 
-.github/workflows/probar_clasificacion.yml
