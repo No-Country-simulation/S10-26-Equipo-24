@@ -111,35 +111,37 @@ def proponer_categoria(descripcion, topics, readme):
     resultados = []
 
     for categoria, palabras in CATEGORIAS.items():
-        evidencia = []
         puntaje = 0
+        evidencia = []
 
         for palabra in palabras:
             if contiene_termino(topics_texto, palabra):
                 puntaje += 5
                 evidencia.append(palabra)
-
             elif contiene_termino(descripcion, palabra):
                 puntaje += 4
                 evidencia.append(palabra)
-
             elif contiene_termino(readme[:2000], palabra):
                 puntaje += 1
                 evidencia.append(palabra)
 
-        # Evitar confundir tecnologías utilizadas con función principal
+        # Reducir confusión entre usar una BD y ser una BD.
         if categoria == "Bases de datos":
-            señales_principales = [
+            señales_bd = [
                 "database engine",
                 "database management system",
                 "database server",
                 "vector database",
-                "distributed database"
+                "distributed database",
+                "database platform",
+                "postgres database"
             ]
 
+            texto_principal = descripcion + " " + topics_texto
+
             if not any(
-                contiene_termino(descripcion + " " + topics_texto, señal)
-                for señal in señales_principales
+                contiene_termino(texto_principal, señal)
+                for señal in señales_bd
             ):
                 puntaje = min(puntaje, 2)
 
@@ -147,20 +149,30 @@ def proponer_categoria(descripcion, topics, readme):
             resultados.append((puntaje, categoria, evidencia))
 
     if not resultados:
-        return "", "Sin evidencia suficiente", ""
+        return "", "", "Sin evidencia suficiente", ""
 
     resultados.sort(key=lambda x: x[0], reverse=True)
 
-    mejor = resultados[0]
-    segundo = resultados[1][0] if len(resultados) > 1 else 0
+    principal = resultados[0][1]
+    mejor_puntaje = resultados[0][0]
+
+    secundarias = [
+        categoria
+        for puntaje, categoria, _ in resultados[1:]
+        if puntaje >= max(4, mejor_puntaje * 0.5)
+    ]
+
+    segundo_puntaje = resultados[1][0] if len(resultados) > 1 else 0
 
     confianza = (
         "Media"
-        if mejor[0] >= 4 and mejor[0] > segundo
+        if mejor_puntaje >= 4 and mejor_puntaje > segundo_puntaje
         else "Baja"
     )
 
-    return mejor[1], confianza, ", ".join(mejor[2][:5])
+    evidencia = ", ".join(resultados[0][2][:5])
+
+    return principal, "; ".join(secundarias), confianza, evidencia
 
 
 def proponer_tipo(descripcion, topics, readme):
@@ -172,6 +184,20 @@ def proponer_tipo(descripcion, topics, readme):
     secundario = readme[:2000]
 
     reglas = [
+        (
+            "Motor de búsqueda",
+            ["search engine", "search-engine", "metasearch"]
+        ),
+        (
+            "Servidor / broker de mensajería",
+            ["message broker", "messaging server",
+             "nats-server", "message queue server"]
+        ),
+        (
+            "Herramienta de seguridad",
+            ["vulnerability scanner", "security scanner",
+             "container security", "vulnerability scanning"]
+        ),
         (
             "Plantilla / ejemplo",
             ["boilerplate", "starter", "template",
@@ -199,18 +225,15 @@ def proponer_tipo(descripcion, topics, readme):
         )
     ]
 
-    # Priorizar descripción y topics
     for tipo, palabras in reglas:
         if any(contiene_termino(principal, p) for p in palabras):
             return tipo
 
-    # Utilizar README como evidencia secundaria
     for tipo, palabras in reglas:
         if any(contiene_termino(secundario, p) for p in palabras):
             return tipo
 
     return "Por determinar"
-
 
 def generar_justificacion(categoria, tipo, evidencia, descripcion):
     if not categoria:
@@ -264,7 +287,12 @@ def main():
             topics = datos.get("topics") or []
             readme, error_readme = obtener_readme(nombre)
 
-            categoria, confianza, evidencia = proponer_categoria(
+            (
+                categoria,
+                secundarias,
+                confianza,
+                evidencia
+            ) = proponer_categoria(
                 descripcion, topics, readme
             )
 
@@ -280,6 +308,7 @@ def main():
 
         else:
             categoria = ""
+            secundarias = ""
             tipo = "Por determinar"
             confianza = "Sin evidencia suficiente"
             evidencia = ""
@@ -295,6 +324,7 @@ def main():
                 "categoria_busqueda", ""
             ),
             "categoria_propuesta": categoria,
+            "categorias_secundarias_propuestas": secundarias,
             "tipo_recurso_propuesto": tipo,
             "justificacion_propuesta": justificacion,
             "evidencia_detectada": evidencia,
@@ -320,6 +350,10 @@ def main():
     print(f"\nPropuestas generadas: {len(propuestas)}")
     print(f"Archivo creado: {OUTPUT}")
     print("Todas las propuestas requieren revisión humana.")
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":
