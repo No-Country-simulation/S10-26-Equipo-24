@@ -139,79 +139,134 @@ def extraer_tecnologias(descripcion, topics, readme):
     return "; ".join(encontradas)
 
 
+
 def extraer_fragmentos(readme, palabras, max_fragmentos=2):
     """
-    Extrae fragmentos documentales que contienen
-    términos relacionados con una funcionalidad.
+    Extrae fragmentos candidatos del README.
 
-    Son evidencias candidatas, no conclusiones.
+    Descarta insignias, enlaces aislados, comandos
+    y bloques de código que no aportan evidencia
+    descriptiva suficiente.
     """
     fragmentos = []
+    en_codigo = False
 
-    for linea in (readme or "").splitlines():
-        linea = limpiar_texto(linea)
+    for linea_original in (readme or "").splitlines():
+        linea_original = linea_original.strip()
 
-        if not 35 <= len(linea) <= 500:
+        # Ignorar bloques de código
+        if linea_original.startswith(("```", "~~~")):
+            en_codigo = not en_codigo
             continue
 
-        if any(
-            re.search(
-                rf"\b{re.escape(palabra)}\b",
+        if en_codigo:
+            continue
+
+        # Ignorar insignias, tablas e imágenes
+        if (
+            linea_original.startswith((
+                "![", "[![", "<img", "<svg",
+                "|", "http://", "https://"
+            ))
+            or "img.shields.io" in linea_original
+            or "badge.svg" in linea_original
+        ):
+            continue
+
+        linea = limpiar_texto(linea_original)
+
+        # Conservar texto suficientemente descriptivo
+        if not 50 <= len(linea) <= 450:
+            continue
+
+        # Evitar líneas dominadas por URLs o formato
+        if re.search(r"https?://", linea):
+            continue
+
+        coincidencias = [
+            palabra for palabra in palabras
+            if re.search(
+                rf"(?<!\w){re.escape(palabra)}(?!\w)",
                 linea,
                 flags=re.IGNORECASE
             )
-            for palabra in palabras
-        ):
-            if linea not in fragmentos:
-                fragmentos.append(linea[:300])
+        ]
+
+        if not coincidencias:
+            continue
+
+        # Evitar duplicados
+        if linea not in fragmentos:
+            fragmentos.append(linea[:300])
 
         if len(fragmentos) >= max_fragmentos:
             break
 
     return " | ".join(fragmentos)
 
+# =====================================
+# VALIDACIÓN FUNCIONAL ASISTIDA
+# =====================================
 
 def analizar_repositorio(repo):
     nombre = repo["nombre_completo"].strip()
 
     datos, error_meta = obtener_metadatos(nombre)
 
+    # Estructura común para todos los registros
+    resultado = {
+        "repo_id": repo.get("repo_id", ""),
+        "nombre_completo": nombre,
+        "categoria_propuesta": repo.get(
+            "categoria_propuesta", ""
+        ),
+        "categorias_secundarias_propuestas": repo.get(
+            "categorias_secundarias_propuestas", ""
+        ),
+        "tipo_recurso_propuesto": repo.get(
+            "tipo_recurso_propuesto", ""
+        ),
+        "problema_que_resuelve_borrador": "",
+        "casos_de_uso_evidencia": "",
+        "tecnologias_mencionadas": "",
+        "integracion_evidencia": "",
+        "evidencia_funcional": "",
+        "enlace_evidencia": f"https://github.com/{nombre}",
+        "enlace_readme_referencia": "",
+        "fuente_evidencia": "No consultada",
+        "categoria_validada": "",
+        "tipo_recurso_validado": "",
+        "justificacion_validada": "",
+        "estado_validacion": "Pendiente",
+        "requiere_revision_humana": "Sí",
+        "observaciones": ""
+    }
+
+    # Si falla la consulta, conservar el registro
+    # pendiente de revisión.
     if datos is None:
-        return {
-            "repo_id": repo["repo_id"],
-            "nombre_completo": nombre,
-            "categoria_propuesta": repo.get(
-                "categoria_propuesta", ""
-            ),
-            "categorias_secundarias_propuestas": repo.get(
-                "categorias_secundarias_propuestas", ""
-            ),
-            "tipo_recurso_propuesto": repo.get(
-                "tipo_recurso_propuesto", ""
-            ),
-            "problema_que_resuelve_borrador": "",
-            "casos_de_uso_evidencia": "",
-            "tecnologias_mencionadas": "",
-            "integracion_evidencia": "",
-            "evidencia_funcional": "",
-            "enlace_evidencia": f"https://github.com/{nombre}",
-            "fuente_evidencia": "No consultada",
-            "categoria_validada": "",
-            "tipo_recurso_validado": "",
-            "justificacion_validada": "",
-            "estado_validacion": "Pendiente",
-            "requiere_revision_humana": "Sí",
-            "observaciones": error_meta
-        }
+        resultado["observaciones"] = (
+            f"No se pudieron obtener metadatos: {error_meta}"
+        )
+        return resultado
 
     descripcion = datos.get("description") or ""
     topics = datos.get("topics") or []
 
     readme, error_readme = obtener_readme(nombre)
 
-    # Descripción proporcionada por el repositorio:
-    # sirve como borrador del problema, no como
-    # problema funcional confirmado.
+    enlace_repositorio = datos.get(
+        "html_url", f"https://github.com/{nombre}"
+    )
+
+    # Referencia convencional: debe verificarse
+    # porque el README puede tener otro nombre.
+    rama = datos.get("default_branch") or "HEAD"
+    enlace_readme = (
+        f"{enlace_repositorio}/blob/{rama}/README.md"
+        if readme else ""
+    )
+
     problema = limpiar_texto(descripcion)
 
     casos = extraer_fragmentos(
@@ -246,12 +301,6 @@ def analizar_repositorio(repo):
         descripcion, topics, readme
     )
 
-    fuente = (
-        "Metadatos y README"
-        if readme
-        else "Metadatos solamente"
-    )
-
     observaciones = []
 
     if error_readme:
@@ -269,32 +318,22 @@ def analizar_repositorio(repo):
             "Integración pendiente de revisión"
         )
 
-    return {
-        "repo_id": repo["repo_id"],
-        "nombre_completo": nombre,
-        "categoria_propuesta": repo.get(
-            "categoria_propuesta", ""
-        ),
-        "categorias_secundarias_propuestas": repo.get(
-            "categorias_secundarias_propuestas", ""
-        ),
-        "tipo_recurso_propuesto": repo.get(
-            "tipo_recurso_propuesto", ""
-        ),
+    resultado.update({
         "problema_que_resuelve_borrador": problema,
         "casos_de_uso_evidencia": casos,
         "tecnologias_mencionadas": tecnologias,
         "integracion_evidencia": integracion,
         "evidencia_funcional": evidencia,
-        "enlace_evidencia": f"https://github.com/{nombre}",
-        "fuente_evidencia": fuente,
-        "categoria_validada": "",
-        "tipo_recurso_validado": "",
-        "justificacion_validada": "",
-        "estado_validacion": "Pendiente",
-        "requiere_revision_humana": "Sí",
+        "enlace_evidencia": enlace_repositorio,
+        "enlace_readme_referencia": enlace_readme,
+        "fuente_evidencia": (
+            "Metadatos y README"
+            if readme else "Metadatos solamente"
+        ),
         "observaciones": " | ".join(observaciones)
-    }
+    })
+
+    return resultado
 
 
 # =====================================
