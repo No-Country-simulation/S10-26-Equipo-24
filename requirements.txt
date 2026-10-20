@@ -1,1 +1,12 @@
 requests>=2.31,<3
+pandas
+httpx
+streamlit
+fastapi
+uvicorn
+python-dotenv
+psycopg2-binary
+pgvector
+langchain
+langchain-community
+openai
