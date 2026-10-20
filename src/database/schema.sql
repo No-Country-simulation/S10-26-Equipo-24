@@ -10,10 +10,10 @@ CREATE TABLE IF NOT EXISTS categories (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabla de Repositorios (Metadatos + Health Score + Embeddings)
+-- Tabla de Repositorios (Metadatos + Métricas de Salud + Embeddings)
 CREATE TABLE IF NOT EXISTS repositories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    github_id BIGINT UNIQUE NOT NULL,
+    github_id BIGINT UNIQUE,
     full_name VARCHAR(255) NOT NULL,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     original_category VARCHAR(100),
@@ -28,6 +28,25 @@ CREATE TABLE IF NOT EXISTS repositories (
     health_score FLOAT DEFAULT 0.0,
     license VARCHAR(50),
     html_url VARCHAR(255),
+    
+    -- Métricas de Salud Avanzadas (Propuestas por Adrián)
+    archived BOOLEAN DEFAULT FALSE,
+    disabled BOOLEAN DEFAULT FALSE,
+    fecha_descarga TIMESTAMP WITH TIME ZONE,
+    commits_90d INT DEFAULT 0,
+    fecha_ultimo_commit TIMESTAMP WITH TIME ZONE,
+    issues_abiertos INT DEFAULT 0,
+    issues_cerrados INT DEFAULT 0,
+    prs_abiertos INT DEFAULT 0,
+    prs_cerrados INT DEFAULT 0,
+    mediana_dias_cierre_issues FLOAT,
+    mediana_dias_merge_prs FLOAT,
+    contribuidores INT DEFAULT 0,
+    tiene_release BOOLEAN DEFAULT FALSE,
+    tiene_tags BOOLEAN DEFAULT FALSE,
+    fecha_ultimo_release TIMESTAMP WITH TIME ZONE,
+    
+    consideraciones_integracion TEXT,
     embedding VECTOR(1536), -- Vector OpenAI text-embedding-3-small
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
