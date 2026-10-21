@@ -7,6 +7,37 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+def inferir_categoria(row):
+    """Asigna una categoría coherente según metadatos si no viene definida."""
+    cat_orig = str(row.get('categoria_validada', '') or row.get('categoria_propuesta', '') or '').strip()
+    if cat_orig and cat_orig.lower() not in ['general', 'nan', 'none', '']:
+        return cat_orig.title()
+
+    desc = str(row.get('descripcion', '') or '').lower()
+    nombre = str(row.get('nombre_completo', '') or '').lower()
+    lang = str(row.get('lenguaje', '') or '').lower()
+
+    if any(k in desc or k in nombre for k in ['db', 'database', 'sql', 'postgres', 'mongo', 'redis', 'storage']):
+        return "Bases de Datos & Almacenamiento"
+    elif any(k in desc or k in nombre for k in ['ai', 'ml', 'llm', 'gpt', 'model', 'neural', 'learning', 'rag']):
+        return "Inteligencia Artificial & ML"
+    elif any(k in desc or k in nombre for k in ['sec', 'auth', 'cyber', 'shield', 'key', 'token', 'vault']):
+        return "Seguridad & Autenticación"
+    elif any(k in desc or k in nombre for k in ['docker', 'k8s', 'kubernetes', 'deploy', 'ci/cd', 'cloud', 'devops']):
+        return "DevOps & Infraestructura"
+    elif any(k in desc or k in nombre for k in ['api', 'rest', 'graphql', 'grpc', 'fastapi', 'express']):
+        return "APIs & Integración"
+    elif any(k in desc or k in nombre for k in ['ui', 'frontend', 'react', 'vue', 'css', 'dashboard', 'streamlit']):
+        return "Frontend & UI Frameworks"
+    elif 'python' in lang:
+        return "Herramientas Python"
+    elif any(l in lang for l in ['javascript', 'typescript']):
+        return "Herramientas JS/TS"
+    elif 'go' in lang:
+        return "Herramientas Go"
+    else:
+        return "Herramientas & Utilidades General"
+
 def seed_database():
     csv_path = "data/catalogo_enriquecido_100.csv"
     if not os.path.exists(csv_path):
@@ -22,27 +53,35 @@ def seed_database():
     cur = conn.cursor()
 
     df = pd.read_csv(csv_path)
-    print(f"📦 Cargando {len(df)} repositorios a la base de datos...")
+    print(f"📦 Procesando {len(df)} repositorios...")
+
+    # Asignar categorías inferidas
+    df['categoria_inferida'] = df.apply(inferir_categoria, axis=1)
 
     # 1. Insertar Categorías Únicas
-    categorias = df['categoria_validada'].dropna().unique()
+    categorias_unicas = df['categoria_inferida'].unique()
     cat_map = {}
     
-    for cat in categorias:
+    for cat in categorias_unicas:
         cur.execute(
-            "INSERT INTO categories (name, description) VALUES (%s, %s) ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING id;",
-            (cat, f"Categoría de herramientas para {cat}")
+            """
+            INSERT INTO categories (name, description) 
+            VALUES (%s, %s) 
+            ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name 
+            RETURNING id;
+            """,
+            (cat, f"Catálogo y herramientas especializadas en {cat}")
         )
         cat_id = cur.fetchone()[0]
         cat_map[cat] = cat_id
 
     conn.commit()
-    print("✅ Categorías registradas e indexadas.")
+    print(f"✅ {len(cat_map)} categorías registradas e indexadas.")
 
     # 2. Insertar Repositorios
     inserted_count = 0
     for idx, row in df.iterrows():
-        cat_id = cat_map.get(row.get('categoria_validada'))
+        cat_id = cat_map.get(row.get('categoria_inferida'))
         
         insert_query = """
         INSERT INTO repositories (
@@ -54,10 +93,12 @@ def seed_database():
         ) VALUES (
             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
         ) ON CONFLICT (github_id) DO UPDATE SET
+            category_id = EXCLUDED.category_id,
             stars = EXCLUDED.stars,
             forks = EXCLUDED.forks,
             updated_at = CURRENT_TIMESTAMP;
         """
+    
 
         github_id = int(row.get('repo_id')) if pd.notna(row.get('repo_id')) else idx + 1000
         
@@ -96,7 +137,7 @@ def seed_database():
     conn.commit()
     cur.close()
     conn.close()
-    print(f"🎉 Seeding completado exitosamente. {inserted_count} repositorios insertados en Supabase.")
+    print(f"🎉 Seeding completado exitosamente. {inserted_count} repositorios vinculados a sus categorías relacionales.")
 
 if __name__ == "__main__":
     seed_database()
