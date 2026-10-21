@@ -14,6 +14,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 🔓 Configuración de CORS para que el Frontend de Lau pueda consumir la API sin bloqueos
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+) 
+
 def get_db_connection():
     if not DATABASE_URL:
         raise HTTPException(status_code=500, detail="DATABASE_URL no configurada en el archivo .env")
