@@ -1,10 +1,14 @@
 
 name: Probar sincronizacion Supabase
 
+
 on:
   push:
+    branches:
+      - feature/sync-supabase
     paths:
       - '.github/workflows/sincronizar_supabase.yml'
+      - 'sincronizar_supabase.py'
   workflow_dispatch:
 
 permissions:
