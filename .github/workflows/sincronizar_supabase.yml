@@ -1,0 +1,32 @@
+name: Sincronizar métricas con Supabase (manual)
+on:
+  workflow_dispatch:
+    inputs:
+      aplicar_cambios:
+        description: "Escribir en Supabase (desactivado por defecto)"
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependencia
+        run: python -m pip install 'psycopg[binary]>=3.1,<4'
+      - name: Validar CSV sin escribir
+        run: python sincronizar_supabase.py --csv data/catalogo_actualizado.csv
+      - name: Validar correspondencia de IDs en Supabase
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python sincronizar_supabase.py --check-db
+      - name: Aplicar cambios (solo con aprobación manual)
+        if: ${{ inputs.aplicar_cambios == true }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python sincronizar_supabase.py --apply
