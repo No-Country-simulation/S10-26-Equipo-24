@@ -1,7 +1,6 @@
 
 name: Probar sincronizacion Supabase
 
-
 on:
   push:
     branches:
@@ -30,5 +29,10 @@ jobs:
       - name: Instalar dependencia
         run: python -m pip install 'psycopg[binary]>=3.1,<4'
 
-      - name: Validar CSV sin modificar Supabase
+      - name: Validar CSV localmente
         run: python sincronizar_supabase.py --csv data/catalogo_actualizado.csv
+
+      - name: Comparar con Supabase sin modificar datos
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python sincronizar_supabase.py --check-db
