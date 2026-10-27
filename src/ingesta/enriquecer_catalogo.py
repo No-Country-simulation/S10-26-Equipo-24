@@ -4,6 +4,12 @@ import datetime
 import requests
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
+# api GITHUB_TOKEN  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
+
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 HEADERS = {"Authorization": f"Bearer {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
