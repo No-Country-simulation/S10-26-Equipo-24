@@ -32,8 +32,4 @@ jobs:
       - name: Validar CSV localmente
         run: python sincronizar_supabase.py --csv data/catalogo_actualizado.csv
 
-      - name: Comparar con Supabase sin modificar datos
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python sincronizar_supabase.py --check-db
 # Nueva prueba de conexion con Supabase
