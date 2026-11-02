@@ -1,8 +1,11 @@
 import os
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+import time
+
 
 load_dotenv()
 
@@ -38,17 +41,37 @@ def health_check():
 
 @app.get("/api/categories", tags=["Categorías"])
 def list_categories():
+    start = time.perf_counter()
+
     conn = get_db_connection()
+    connected = time.perf_counter()
+
     cur = conn.cursor()
-    cur.execute("SELECT id, name, description FROM categories ORDER BY name ASC;")
+    cur.execute(
+        "SELECT id, name, description FROM categories ORDER BY name ASC;"
+    )
     categories = cur.fetchall()
+    queried = time.perf_counter()
+
     cur.close()
     conn.close()
+
+    finished = time.perf_counter()
+
+    print(f"Conexión: {connected - start:.3f}s")
+    print(f"Consulta SQL: {queried - connected:.3f}s")
+    print(f"Cierre: {finished - queried:.3f}s")
+    print(f"Total: {finished - start:.3f}s")
+
     return {"total": len(categories), "data": categories}
 
 @app.get("/api/repositories", tags=["Repositorios"])
 def list_repositories(limit: int = 20, category_id: str = None):
+    start = time.perf_counter()
+
     conn = get_db_connection()
+    connected = time.perf_counter() 
+
     cur = conn.cursor()
     
     if category_id:
@@ -74,8 +97,17 @@ def list_repositories(limit: int = 20, category_id: str = None):
         cur.execute(query, (limit,))
         
     repos = cur.fetchall()
+    queried = time.perf_counter()
+
     cur.close()
     conn.close()
+    finished = time.perf_counter()
+    
+    print(f"Conexión: {connected - start:.3f}s")
+    print(f"Consulta SQL: {queried - connected:.3f}s")
+    print(f"Cierre: {finished - queried:.3f}s")
+    print(f"Total: {finished - start:.3f}s")
+    
     return {"total": len(repos), "data": repos}
 
 @app.get("/api/repositories/{repo_id}", tags=["Repositorios"])
