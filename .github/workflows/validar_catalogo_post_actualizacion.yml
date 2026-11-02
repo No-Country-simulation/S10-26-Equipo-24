@@ -1,0 +1,57 @@
+# OpenBridge — etapa segura: validar el catálogo tras la actualización diaria.
+# NO conecta con Supabase ni modifica registros.
+# IMPORTANTE: sustituir el nombre de workflows por el valor exacto de
+# `name:` en .github/workflows/actualizar_catalogo.yml.
+name: Validar catálogo después de actualización
+
+on:
+  workflow_run:
+    workflows:
+      - "Actualizar catálogo Open Source"
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validar-catalogo-post-actualizacion
+  cancel-in-progress: false
+
+jobs:
+  validar-catalogo:
+    name: Validación local sin acceso a Supabase
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+           (github.event.workflow_run.conclusion == 'success' &&
+            github.event.workflow_run.head_branch == 'main') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Obtener versión actual de main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verificar archivos necesarios
+        shell: bash
+        run: |
+          test -f sincronizar_supabase.py
+          test -f data/catalogo_actualizado.csv
+
+      - name: Validar catálogo (modo local y solo lectura)
+        shell: bash
+        run: |
+          python sincronizar_supabase.py --max-age-hours 72
+
+      - name: Resumen
+        if: success()
+        run: echo 'Catálogo validado. No se conectó a Supabase ni se modificó la base.' >> "$GITHUB_STEP_SUMMARY"

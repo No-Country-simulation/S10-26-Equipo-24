@@ -1,0 +1,35 @@
+
+name: Probar sincronizacion Supabase
+
+on:
+  push:
+    branches:
+      - feature/sync-supabase
+    paths:
+      - '.github/workflows/sincronizar_supabase.yml'
+      - 'sincronizar_supabase.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencia
+        run: python -m pip install 'psycopg[binary]>=3.1,<4'
+
+      - name: Validar CSV localmente
+        run: python sincronizar_supabase.py --csv data/catalogo_actualizado.csv
+
+# Nueva prueba de conexion con Supabase
