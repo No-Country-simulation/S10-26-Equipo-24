@@ -1,0 +1,27 @@
+
+{
+  "tipo": "prueba_manual_sin_busqueda_vectorial",
+  "resultados": {
+    "comercio": [
+      {
+        "github_id": "8162715",
+        "full_name": "saleor/saleor",
+        "extracto": "Plataforma de comercio electrónico basada en GraphQL."
+      }
+    ],
+    "autenticacion": [
+      {
+        "github_id": "378310716",
+        "full_name": "logto-io/logto",
+        "extracto": "Gestión de identidad y autenticación."
+      }
+    ],
+    "pagos": [
+      {
+        "github_id": "552877440",
+        "full_name": "juspay/hyperswitch",
+        "extracto": "Infraestructura de pagos de código abierto."
+      }
+    ]
+  }
+}
