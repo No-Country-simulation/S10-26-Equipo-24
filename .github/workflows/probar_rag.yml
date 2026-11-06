@@ -32,7 +32,7 @@ jobs:
         run: |
           python src/rag/rag_openbridge.py \
             --consulta "Necesito una tienda online con usuarios y pagos" \
-            --recuperacion tests/rag/ejemplo_recuperacion_adrian.json \
+            --recuperacion tests/rag/ejemplo_recuperacion.json \
             --solo-prompt
 
       - name: Validar resultado
