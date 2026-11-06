@@ -1,0 +1,32 @@
+
+name: Probar RAG Generativo OpenBridge
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probar-rag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preparar contexto del RAG
+        run: |
+          python src/rag/rag_openbridge.py \
+            --consulta "Necesito una tienda online con usuarios y pagos" \
+            --recuperacion tests/rag/ejemplo_recuperacion_adrian.json \
+            --solo-prompt
+
+      - name: Verificar resultado
+        run: |
+          python -c "import json; d=json.load(open('reportes/rag_openbridge_respuesta.json',encoding='utf-8')); assert len(d['fuentes']) == 3; print('PRUEBA EXITOSA: 3 fuentes recuperadas')"
