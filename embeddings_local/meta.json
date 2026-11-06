@@ -2,7 +2,7 @@
  "provider": "local",
  "model": "paraphrase-multilingual-MiniLM-L12-v2",
  "dims": 384,
- "creado": "2026-11-04T12:45:29.675072+00:00",
+ "creado": "2026-11-06T10:08:56.547304+00:00",
  "full_names": [
   "dart-frog-dev/dart_frog",
   "rameshsunkara/go-rest-api-example",

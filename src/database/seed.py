@@ -103,6 +103,7 @@ def seed_database():
         # )
         conn = conectar_db()
         cur = conn.cursor()
+        # print("🔌 Conectado a Supabase.")
 
         df = pd.read_csv(csv_path)
         print(f"📦 Procesando {len(df)} repositorios...")
