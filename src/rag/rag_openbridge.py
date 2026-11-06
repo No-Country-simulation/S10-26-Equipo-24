@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """OpenBridge: RAG generativo (sin buscar embeddings ni escribir en Supabase).
 
-Entrada: JSON de resultados de recuperación de Adrián + CSV validado de ideas.
+Entrada: JSON de resultados de recuperación  + CSV validado de ideas.
 Salida: respuesta con fuentes y JSON estructurado; Ollama local gratuito.
 
 Ejemplo de prueba sin LLM:
