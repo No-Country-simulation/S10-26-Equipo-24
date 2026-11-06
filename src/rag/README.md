@@ -14,9 +14,9 @@ recuperada del catálogo de OpenBridge.
 - Identificar integraciones pendientes de validación técnica.
 
 ## Integración
-Entrada: resultados de recuperación semántica (Adrián).
+Entrada: resultados de recuperación semántica.
 Datos: catálogo e ideas de integración.
-Salida: recomendaciones para la API de Backend (Ema).
+Salida: recomendaciones para la API de Backend.
 
 ## Estado
 Prototipo desarrollado.
