@@ -408,6 +408,41 @@ def generar_con_ollama(prompt, modelo, timeout):
 
     return texto
 
+def construir_respaldo(consulta, sources):
+    """Respuesta documental cuando el LLM no respeta las fuentes."""
+
+    lineas = [
+        "1) Necesidad",
+        consulta,
+        "",
+        "2) Herramientas propuestas",
+    ]
+
+    for s in sources:
+        nombre = s["full_name"]
+        cita = f"[{s['id']}]"
+        caso = s.get("caso_uso") or s.get("descripcion") or "Sin detalle"
+        propuesta = s.get("propuesta_integracion") or "Sin propuesta documentada"
+
+        lineas.append(
+            f"- {nombre} {cita}: {caso}. "
+            f"Propuesta pendiente de validacion: {propuesta}"
+        )
+
+    lineas.extend([
+        "",
+        "3) Arquitectura conceptual",
+        "Los componentes anteriores son candidatos para cubrir "
+        "las necesidades indicadas. Su conexion es una hipotesis "
+        "que requiere validacion tecnica.",
+        "",
+        "4) Validaciones pendientes",
+        "Comprobar compatibilidad, versiones, autenticacion, "
+        "seguridad, licencias y pruebas de integracion."
+    ])
+
+    return "\n".join(lineas)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -546,7 +581,26 @@ def main():
                 respuesta, sources
             )
 
-            intentos = 1
+            intentos = 2
+             
+            result["citas_llm_validas"] = evaluacion["valida"]
+
+            if not evaluacion["valida"]:
+                result["respuesta_llm_descartada"] = response
+
+                response = construir_respaldo(
+                    args.consulta,
+                    sources
+                )
+
+                evaluacion = evaluar_citas(response, sources)
+
+                result["modo"] = "respaldo_documental"
+                result["generacion_llm_validada"] = False
+
+            else:
+                result["modo"] = "generacion_llm"
+                result["generacion_llm_validada"] = True
 
             if not evaluacion["valida"]:
                 print(
