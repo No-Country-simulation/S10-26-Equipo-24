@@ -17,6 +17,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+# from dotenv import load_dotenv
+# load_dotenv(override=True)
+
 DIR_INDICE = Path("embeddings_local")
 BATCH = 50
 
