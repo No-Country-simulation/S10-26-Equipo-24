@@ -1,26 +1,19 @@
 
 import { useId } from "react";
+import type { Repository } from "@/services/api";
 
-export interface RepositoryData {
-  id: string;
-  full_name: string;
-  category: string | null;
-  stars: number;
-  forks: number;
-  languages: string | null;
-  commits_90d: number;
-  contribuidores: number;
-  license: string | null;
-  html_url: string;
-}
 
 interface RepositoryCardProps {
-  repo: RepositoryData;
+  repo: Repository;
 }
 
+
 export default function RepositoryCard({ repo }: RepositoryCardProps) {
-  // Valor temporal
-  const score = 85;
+  // Obtener el porcentaje desde la API
+  const score = Math.min(
+    100,
+    Math.max(0, repo.health_score ?? 0)
+  );
 
   const gradientId = useId();
 
