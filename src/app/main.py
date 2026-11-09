@@ -138,7 +138,13 @@ def list_repositories(
             r.contribuidores,
             r.license,
             r.html_url,
-            r.health_score
+            r.health_score,
+            r.description,
+            r.consideraciones_integracion,
+            r.fecha_ultimo_commit,
+            r.open_issues,
+            r.prs_abiertos,
+            r.prs_cerrados
         FROM repositories r
         LEFT JOIN categories c ON r.category_id = c.id
         {where_clause}

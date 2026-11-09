@@ -20,6 +20,12 @@ export interface Repository {
   license: string | null;
   html_url: string;
   health_score: number | null;
+  description: string | null;
+  consideraciones_integracion: string | null;
+  fecha_ultimo_commit: string | null;
+  open_issues: number | null;
+  prs_abiertos: number | null;
+  prs_cerrados: number | null;
 }
 
 // Filtros disponibles para consultar repositorios
@@ -128,4 +134,45 @@ Promise<RepositoryFilterOptions> {
   }
 
   return res.json();
+}
+
+export interface RepositoryDetail {
+  id: string;
+  full_name: string;
+  category_name: string | null;
+  stars: number;
+  forks: number;
+  languages: string | null;
+  contribuidores: number;
+  license: string | null;
+  health_score: number | null;
+  html_url: string;
+
+  description: string | null;
+  consideraciones_integracion: string | null;
+  fecha_ultimo_commit: string | null;
+  open_issues: number | null;
+  prs_abiertos: number | null;
+  prs_cerrados: number | null;
+}
+
+export async function getRepositoryDetail(
+  repoId: string,
+  signal?: AbortSignal
+): Promise<RepositoryDetail> {
+  const res = await fetch(
+    `${API_URL}/api/repositories/${encodeURIComponent(repoId)}`,
+    {
+      cache: "no-store",
+      signal,
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("No se pudo cargar la ficha técnica del repositorio");
+  }
+
+  const result = await res.json();
+
+  return result.data;
 }

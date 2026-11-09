@@ -1,14 +1,15 @@
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { Repository } from "@/services/api";
-
+import RepositoryDetails from "@/components/RepositoryDetails";
 
 interface RepositoryCardProps {
   repo: Repository;
 }
 
-
 export default function RepositoryCard({ repo }: RepositoryCardProps) {
+  const [showDetails, setShowDetails] = useState(false);
+
   // Obtener el porcentaje desde la API
   const score = Math.min(
     100,
@@ -31,11 +32,11 @@ export default function RepositoryCard({ repo }: RepositoryCardProps) {
     }).format(value);
 
   return (
-    <article className="relative w-full min-w-0 max-w-[360px] rounded-2xl border border-gray-200 bg-white p-4 font-sans text-gray-800 shadow-sm transition-shadow hover:shadow-md">
+    <article className="relative w-full min-w-0 max-w-90 rounded-2xl border border-gray-200 bg-white p-4 font-sans text-gray-800 shadow-sm transition-shadow hover:shadow-md">
+
       {/* Header */}
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-3">
-
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50">
             <svg
               className="h-5 w-5 fill-current text-emerald-500"
@@ -89,7 +90,7 @@ export default function RepositoryCard({ repo }: RepositoryCardProps) {
         MÉTRICAS CLAVE
       </h4>
 
-      <div className="mb-5 grid grid-cols-2 gap-x-3 items-start">
+      <div className="mb-5 grid grid-cols-2 items-start gap-x-3">
 
         {/* Stars */}
         <div className="min-w-0 flex-1">
@@ -114,12 +115,12 @@ export default function RepositoryCard({ repo }: RepositoryCardProps) {
 
         {/* Health Score */}
         <div
-          className="relative w-full max-w-[140px] min-w-0 flex flex-col items-center"
+          className="relative flex w-full max-w-35 min-w-0 flex-col items-center"
           role="img"
           aria-label={`Salud del repositorio: ${score}%`}
         >
           <svg
-            className="block w-full h-auto"
+            className="block h-auto w-full"
             viewBox="0 0 100 60"
             fill="none"
             aria-hidden="true"
@@ -159,62 +160,88 @@ export default function RepositoryCard({ repo }: RepositoryCardProps) {
             </defs>
           </svg>
 
-          {/* Porcentaje centrado debajo del indicador */}
+          {/* Porcentaje */}
           <span className="absolute inset-x-0 bottom-0 text-center text-xs font-bold text-emerald-600">
             {score}%
           </span>
         </div>
       </div>
 
-      {/* Metadatos */}
+      {/* Metadatos: se conserva la distribución original */}
       <div className="grid grid-cols-2 gap-x-3 gap-y-3 text-xs">
 
+        {/* Forks */}
         <div className="min-w-0">
           <span className="mb-1 block font-bold text-gray-900">
             Forks
           </span>
-          <span className="break-words text-gray-600">
+          <span className="wrap-break-word text-gray-600">
             {formatNumber(repo.forks)}
           </span>
         </div>
 
+        {/* Contribuidores */}
         <div className="min-w-0">
           <span className="mb-1 block font-bold text-gray-900">
             Contribuidores
           </span>
-          <span className="break-words text-gray-600">
+          <span className="wrap-break-word text-gray-600">
             {formatNumber(repo.contribuidores)}
           </span>
         </div>
 
+        {/* Commits */}
         <div className="min-w-0">
           <span className="mb-1 block font-bold text-gray-900">
             Commits (90 días)
           </span>
-          <span className="break-words text-gray-600">
+          <span className="wrap-break-word text-gray-600">
             {formatNumber(repo.commits_90d)}
           </span>
         </div>
 
+        {/* Licencia */}
         <div className="min-w-0">
           <span className="mb-1 block font-bold text-gray-900">
             Licencia
           </span>
-          <span className="break-words text-gray-600">
+          <span className="wrap-break-word text-gray-600">
             {repo.license ?? "No especificada"}
           </span>
         </div>
 
-        <div className="col-span-2 min-w-0">
-          <span className="mb-1 block font-bold text-gray-900">
-            Lenguajes
-          </span>
-          <span className="break-words text-gray-600">
-            {repo.languages ?? "No especificados"}
-          </span>
-        </div>
-
+       {/* Lenguajes: conserva exactamente su apariencia */}
+      <div className="col-span-2">
+        <p className="mb-1 block font-bold text-gray-900">Lenguajes</p>
+        <p className="wrap-break-word text-gray-600">
+          {repo.languages || "No disponible"}
+        </p>
       </div>
+
+      {/* Botón alineado con la segunda columna (Licencia) */}
+      <div className="col-span-2 grid grid-cols-2 -mt-10">
+        <div></div>
+        <div className="flex justify-start">
+          <button
+            type="button"
+            onClick={() => setShowDetails(true)}
+            className="flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-700"
+            aria-label={`Ver ficha técnica de ${repo.full_name}`}
+          >
+            Ver ficha técnica
+          </button>
+        </div>
+      </div>
+    </div>
+
+      {/* Modal de información adicional */}
+      {showDetails && (
+        <RepositoryDetails
+          repoId={repo.id}
+          onClose={() => setShowDetails(false)}
+        />
+      )}
+
     </article>
   );
 }
