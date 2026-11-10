@@ -1,0 +1,26 @@
+name: OpenBridge - Extraer metadata verificada
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Consultar 100 repositorios con GraphQL (sin actualizar Supabase)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python extraer_metadata_github.py
+      - name: Conservar resultados incluso si algun repo falla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openbridge-metadata-github
+          path: |
+            reportes/metadata_github_verificada.csv
+            reportes/metadata_github_errores.csv
+          if-no-files-found: warn
