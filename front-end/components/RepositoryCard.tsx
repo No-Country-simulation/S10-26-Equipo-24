@@ -210,27 +210,29 @@ export default function RepositoryCard({ repo }: RepositoryCardProps) {
           </span>
         </div>
 
-       {/* Lenguajes: conserva exactamente su apariencia */}
-      <div className="col-span-2">
-        <p className="mb-1 block font-bold text-gray-900">Lenguajes</p>
-        <p className="wrap-break-word text-gray-600">
-          {repo.languages || "No disponible"}
-        </p>
-      </div>
+      {/* Lenguajes y botón */}
+      <div className="col-span-2 flex items-end justify-between gap-3">
 
-      {/* Botón alineado con la segunda columna (Licencia) */}
-      <div className="col-span-2 grid grid-cols-2 -mt-10">
-        <div></div>
-        <div className="flex justify-start">
-          <button
-            type="button"
-            onClick={() => setShowDetails(true)}
-            className="flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-700"
-            aria-label={`Ver ficha técnica de ${repo.full_name}`}
-          >
-            Ver ficha técnica
-          </button>
+        {/* Lenguajes */}
+        <div className="min-w-0 flex-1">
+          <p className="mb-1 font-bold text-gray-900">
+            Lenguajes
+          </p>
+          <p className="wrap-break-word text-gray-600">
+            {repo.languages || "No disponible"}
+          </p>
         </div>
+
+        {/* Botón */}
+        <button
+          type="button"
+          onClick={() => setShowDetails(true)}
+          className="shrink-0 rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-700"
+          aria-label={`Ver ficha técnica de ${repo.full_name}`}
+        >
+          Ver ficha técnica
+        </button>
+
       </div>
     </div>
 

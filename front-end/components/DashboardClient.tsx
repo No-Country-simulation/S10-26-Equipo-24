@@ -3,14 +3,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Category, Repository } from "@/services/api";
+import type { Category, Repository, RepositoryFilterOptions} from "@/services/api";
 import { getRepositories } from "@/services/api";
 import RepositoryCard from "@/components/RepositoryCard";
+import ChatWidget from "@/components/ChatWidget";
 
 interface DashboardClientProps {
   categories: Category[];
   initialRepositories: Repository[];
   initialTotal: number;
+  filterOptions: RepositoryFilterOptions;
+
 }
 
 const PAGE_SIZE = 20;
@@ -29,6 +32,7 @@ export default function DashboardClient({
   categories,
   initialRepositories,
   initialTotal,
+  filterOptions,
 }: DashboardClientProps) {
   const [repositories, setRepositories] =
     useState<Repository[]>(initialRepositories);
@@ -39,6 +43,7 @@ export default function DashboardClient({
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [license, setLicense] = useState("");
+  const [language, setLanguage] = useState("");
   const [maintenance, setMaintenance] = useState("");
   const [minStars, setMinStars] = useState("");
 
@@ -67,6 +72,7 @@ export default function DashboardClient({
             search,
             categoryId,
             license,
+            language,
             minStars,
             minHealthScore: selectedRange?.min,
             maxHealthScore: selectedRange?.max,
@@ -100,6 +106,7 @@ export default function DashboardClient({
     search,
     categoryId,
     license,
+    language,
     maintenance,
     minStars,
     currentPage,
@@ -114,6 +121,7 @@ export default function DashboardClient({
     setSearch("");
     setCategoryId("");
     setLicense("");
+    setLanguage("");
     setMaintenance("");
     setMinStars("");
     setCurrentPage(1);
@@ -170,22 +178,44 @@ export default function DashboardClient({
 
         <hr className="mb-5 border-gray-100" />
 
+        <div className="mt-5">
+          <h3 className="mb-2 text-sm font-bold text-gray-800">
+            Lenguaje
+          </h3>
+
+        <select
+          value={language}
+          onChange={(e) => updateFilter(setLanguage, e.target.value)}
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+        >
+          <option value="">Todos los lenguajes</option>
+
+          {filterOptions.languages.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+      </div>
+
         {/* LICENCIAS */}
-        <div className="mb-6">
-          <h3 className="mb-3 text-sm font-bold text-gray-800">
+        <div className="mt-5">
+          <h3 className="mb-2 text-sm font-bold text-gray-800">
             Licencia
           </h3>
 
           <select
             value={license}
             onChange={(e) => updateFilter(setLicense, e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white p-2 text-sm"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           >
             <option value="">Todas las licencias</option>
-            <option value="MIT">MIT</option>
-            <option value="Apache-2.0">Apache-2.0</option>
-            <option value="GPL-3.0">GPL-3.0</option>
-            <option value="AGPL-3.0">AGPL-3.0</option>
+
+            {filterOptions.licenses.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -386,7 +416,11 @@ export default function DashboardClient({
           </p>
         )}
 
-      </section>
-    </div>
+    </section>
+
+      {/* ASISTENTE DE CHAT */}
+      <ChatWidget />
+
+  </div>
   );
 }

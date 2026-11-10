@@ -33,7 +33,7 @@ def get_db_connection():
         conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         return conn
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al conectar con Supabase PostgreSQL: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al conectar con Supabase PostgError al cargar los repositoriosQL: {str(e)}")
 
 @app.get("/", tags=["Health Check"])
 def health_check():
@@ -73,6 +73,7 @@ def list_repositories(
     search: str = None,
     category_id: str = None,
     license: str = None,
+    language: str = None,
     min_stars: int = None,
     min_health_score: int = None,
     max_health_score: int = None
@@ -98,6 +99,16 @@ def list_repositories(
     if license:
         conditions.append("r.license = %s")
         params.append(license)
+
+    if language:
+        conditions.append("""
+            EXISTS (
+                SELECT 1
+                FROM unnest(string_to_array(r.languages, ',')) AS lang
+                WHERE LOWER(TRIM(lang)) = LOWER(%s)
+            )
+        """)
+        params.append(language.strip())
 
     if min_stars is not None:
         conditions.append("r.stars >= %s")
@@ -138,13 +149,7 @@ def list_repositories(
             r.contribuidores,
             r.license,
             r.html_url,
-            r.health_score,
-            r.description,
-            r.consideraciones_integracion,
-            r.fecha_ultimo_commit,
-            r.open_issues,
-            r.prs_abiertos,
-            r.prs_cerrados
+            r.health_score            
         FROM repositories r
         LEFT JOIN categories c ON r.category_id = c.id
         {where_clause}
@@ -196,3 +201,38 @@ def get_repository_detail(repo_id: str):
     return {"data": repo}
 
 
+@app.get("/api/repository-filters", tags=["Repositorios"])
+def get_repository_filters():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    query = """
+        SELECT
+            ARRAY(
+                SELECT DISTINCT TRIM(license)
+                FROM repositories
+                WHERE license IS NOT NULL
+                  AND TRIM(license) <> ''
+                ORDER BY TRIM(license)
+            ) AS licenses,
+
+            ARRAY(
+                SELECT DISTINCT TRIM(lang)
+                FROM repositories,
+                LATERAL unnest(string_to_array(languages, ',')) AS lang
+                WHERE languages IS NOT NULL
+                  AND TRIM(lang) <> ''
+                ORDER BY TRIM(lang)
+            ) AS languages;
+    """
+
+    cur.execute(query)
+    filters = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    return {
+        "licenses": filters["licenses"],
+        "languages": filters["languages"]
+    }

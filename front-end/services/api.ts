@@ -19,13 +19,7 @@ export interface Repository {
   contribuidores: number;
   license: string | null;
   html_url: string;
-  health_score: number | null;
-  description: string | null;
-  consideraciones_integracion: string | null;
-  fecha_ultimo_commit: string | null;
-  open_issues: number | null;
-  prs_abiertos: number | null;
-  prs_cerrados: number | null;
+  health_score: number | null;  
 }
 
 // Filtros disponibles para consultar repositorios
@@ -33,6 +27,7 @@ export interface RepositoryFilters {
   search?: string;
   categoryId?: string;
   license?: string;
+  language?: string;
   minStars?: string;
   minHealthScore?: number;
   maxHealthScore?: number;
@@ -40,6 +35,7 @@ export interface RepositoryFilters {
 
 export interface RepositoryFilterOptions {
   licenses: string[];
+  languages: string[];
 }
 
 // Obtener categorías
@@ -57,6 +53,7 @@ export async function getCategories(): Promise<{
 
   return res.json();
 }
+
 
 // Obtener repositorios con filtros y paginación
 export async function getRepositories(
@@ -86,6 +83,11 @@ export async function getRepositories(
   // Licencia
   if (filters.license) {
     params.set("license", filters.license);
+  }
+
+  // Lenguajes
+  if (filters.language) {
+  params.set("language", filters.language);
   }
 
   // Estrellas mínimas
@@ -122,18 +124,16 @@ export async function getRepositories(
 }
 
 // Obtener opciones de filtros desde el backend
-export async function getRepositoryFilters():
-Promise<RepositoryFilterOptions> {
-  const res = await fetch(
-    `${API_URL}/api/repository-filters`,
-    { cache: "no-store" }
-  );
+export async function getRepositoryFilters(): Promise<RepositoryFilterOptions> {
+  const response = await fetch(`${API_URL}/api/repository-filters`, {
+    cache: "no-store",
+  });
 
-  if (!res.ok) {
-    throw new Error("Error al cargar los filtros");
+  if (!response.ok) {
+    throw new Error("Error al obtener los filtros");
   }
 
-  return res.json();
+  return response.json();
 }
 
 export interface RepositoryDetail {
@@ -152,6 +152,7 @@ export interface RepositoryDetail {
   consideraciones_integracion: string | null;
   fecha_ultimo_commit: string | null;
   open_issues: number | null;
+  issues_cerrados: number | null;
   prs_abiertos: number | null;
   prs_cerrados: number | null;
 }

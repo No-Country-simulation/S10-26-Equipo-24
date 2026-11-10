@@ -1,14 +1,20 @@
 import { Suspense } from "react";
-import { getCategories, getRepositories } from "@/services/api";
+import {
+  getCategories,
+  getRepositories,
+  getRepositoryFilters,
+} from "@/services/api";
+
 import DashboardClient from "@/components/DashboardClient";
 
 export const instant = false;
 
 async function DashboardContent() {
-  // Consultamos categorías y repositorios en paralelo.
-  const [categoriesData, reposData] = await Promise.all([
+  // Consultamos categorías, repositorios y filtros en paralelo.
+  const [categoriesData, reposData, filtersData] = await Promise.all([
     getCategories(),
     getRepositories(20),
+    getRepositoryFilters(),
   ]);
 
   return (
@@ -16,6 +22,7 @@ async function DashboardContent() {
       categories={categoriesData.data}
       initialRepositories={reposData.data}
       initialTotal={reposData.total}
+      filterOptions={filtersData}
     />
   );
 }

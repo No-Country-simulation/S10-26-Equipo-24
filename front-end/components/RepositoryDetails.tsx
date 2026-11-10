@@ -267,7 +267,8 @@ export default function RepositoryDetails({
               </div>
 
               {/* Issues y Pull Requests */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {/* Issues abiertos */}
                 <div className="rounded-lg border border-gray-200 p-3">
                   <span className="mb-1 block text-xs text-gray-500">
                     Issues abiertos
@@ -277,6 +278,17 @@ export default function RepositoryDetails({
                   </span>
                 </div>
 
+                {/* Issues cerrados */}
+                <div className="rounded-lg border border-gray-200 p-3">
+                  <span className="mb-1 block text-xs text-gray-500">
+                    Issues cerrados
+                  </span>
+                  <span className="text-2xl font-bold text-gray-800">
+                    {formatNumber(repository.issues_cerrados)}
+                  </span>
+                </div>
+
+                {/* PRs abiertos */}
                 <div className="rounded-lg border border-gray-200 p-3">
                   <span className="mb-1 block text-xs text-gray-500">
                     PRs abiertos
@@ -286,6 +298,7 @@ export default function RepositoryDetails({
                   </span>
                 </div>
 
+                {/* PRs cerrados */}
                 <div className="rounded-lg border border-gray-200 p-3">
                   <span className="mb-1 block text-xs text-gray-500">
                     PRs cerrados
