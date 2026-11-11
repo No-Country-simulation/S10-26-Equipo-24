@@ -15,3 +15,6 @@ env/
 # IDEs
 .vscode/
 .idea/
+
+# Archivos de configuración del sistema
+user_data/

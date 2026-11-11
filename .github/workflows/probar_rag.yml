@@ -1,0 +1,40 @@
+
+name: Probar RAG Generativo OpenBridge
+
+on:
+  push:
+    branches:
+      - developer
+    paths:
+      - '.github/workflows/probar_rag.yml'
+      - 'src/rag/**'
+      - 'tests/rag/**'
+      - 'data/integraciones/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probar-rag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preparar contexto RAG
+        run: |
+          python src/rag/rag_openbridge.py \
+            --consulta "Necesito una tienda online con usuarios y pagos" \
+            --recuperacion tests/rag/ejemplo_recuperacion.json \
+            --solo-prompt
+
+      - name: Validar resultado
+        run: |
+          python -c "import json,pathlib; d=json.load(open('reportes/rag_openbridge_respuesta.json',encoding='utf-8')); assert len(d['fuentes'])==3; assert d['modo']=='preparacion_sin_llm'; assert pathlib.Path(d['prompt']).is_file(); print('PRUEBA EXITOSA: 3 fuentes y prompt generado')"

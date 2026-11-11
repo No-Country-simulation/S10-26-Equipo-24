@@ -110,7 +110,7 @@ try:
     cur.execute("""
         SELECT c.name, COUNT(r.id) as total
         FROM categories c
-        INNER JOIN repositories r ON r.category_id = c.id
+        LEFT JOIN repositories r ON r.category_id = c.id
         GROUP BY c.name
         ORDER BY total DESC;
     """)
