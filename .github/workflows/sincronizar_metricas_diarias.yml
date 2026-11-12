@@ -1,0 +1,40 @@
+name: Sincronizar metricas diarias Supabase
+
+on:
+  workflow_run:
+    workflows: ["Actualizar catálogo Open Source"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sincronizar-metricas-supabase
+  cancel-in-progress: false
+
+jobs:
+  sincronizar:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Descargar ultimo catalogo de main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar controlador PostgreSQL
+        run: python -m pip install 'psycopg[binary]>=3.1,<4'
+      - name: Sincronizar metricas autorizadas en Supabase
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python sincronizar_metricas_diarias.py --apply
