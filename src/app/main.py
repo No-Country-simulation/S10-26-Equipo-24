@@ -1,4 +1,9 @@
 import os
+import sys
+import json
+import subprocess
+from pathlib import Path
+from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -8,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+ROOT_DIR = Path(__file__).resolve().parents[2]
 
 app = FastAPI(
     title="OpenBridge API 🌉",
@@ -15,14 +21,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# 🔓 Configuración de CORS para que el Frontend de Lau pueda consumir la API sin bloqueos
+# 🔓 Configuración de CORS para el Frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-) 
+)
+
+class ChatRequest(BaseModel):
+    message: str
 
 def get_db_connection():
     if not DATABASE_URL:
@@ -99,3 +108,42 @@ def get_repository_detail(repo_id: str):
         raise HTTPException(status_code=404, detail="Repositorio no encontrado")
         
     return {"data": repo}
+
+@app.post("/api/chat", tags=["Chat RAG"])
+def chat_rag(request: ChatRequest):
+    consulta = request.message.strip()
+    if not consulta:
+        raise HTTPException(status_code=400, detail="El campo 'message' no puede estar vacío.")
+
+    script_rag = ROOT_DIR / "src/rag/integrar_openbridge.py"
+    salida_json = ROOT_DIR / "reportes/rag_openbridge_respuesta.json"
+
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+
+    proceso = subprocess.run(
+        [sys.executable, str(script_rag), "--consulta", consulta],
+        cwd=str(ROOT_DIR),
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=300
+    )
+
+    if proceso.returncode != 0:
+        detalle = (proceso.stderr or proceso.stdout).strip()
+        raise HTTPException(status_code=500, detail=f"Error en pipeline RAG: {detalle}")
+
+    # Leer el JSON estructurado generado por rag_openbridge.py
+    if salida_json.is_file():
+        datos = json.loads(salida_json.read_text(encoding="utf-8"))
+        return {
+            "response": datos.get("respuesta_generada", ""),
+            "fuentes": datos.get("fuentes", []),
+            "modo": datos.get("modo", ""),
+            "status": "success"
+        }
+
+    return {"response": proceso.stdout.strip(), "status": "success"}
