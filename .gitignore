@@ -17,4 +17,5 @@ env/
 .idea/
 
 # Archivos de configuración del sistema
-user_data/
+user_data/reportes/
+reportes/
