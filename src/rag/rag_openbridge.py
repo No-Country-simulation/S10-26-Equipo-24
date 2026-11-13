@@ -401,7 +401,8 @@ def llamar_ollama(prompt, modelo, timeout):
         "stream": False,
         "options": {
             "temperature": 0.1,
-            "num_predict": 900
+            "num_predict": 450,
+            "num_ctx": 2048
         }
     }, ensure_ascii=False).encode("utf-8")
 
